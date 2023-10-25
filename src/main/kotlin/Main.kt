@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
     if (outputAdded.exists()) {
         return println("Ausgabe-Datei ${outputAdded.name} existiert bereits")
     }
-    val outputModifiedDeleted = File("$inputPath-aktualisiert_oder_entfernt.osc")
+    val outputModifiedDeleted = File("$inputPath-aenderungen.osc")
     if (outputModifiedDeleted.exists()) {
         return println("Ausgabe-Datei ${outputModifiedDeleted.name} existiert bereits")
     }
