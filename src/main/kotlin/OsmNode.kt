@@ -2,7 +2,6 @@ data class OsmNode(
     val id: Long,
     val version: Int,
     val timestamp: String?,
-    val lat: Double,
-    val lon: Double,
+    val position: LatLon,
     val tags: MutableMap<String, String>
 )

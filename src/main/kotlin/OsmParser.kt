@@ -15,8 +15,7 @@ fun parseOsmNodes(inputStream: InputStream): List<OsmNode> {
                     val attrs = reader.attributes.toMap()
                     node = OsmNode(
                         id = attrs["id"]!!.toLong(),
-                        lat = attrs["lat"]!!.toDouble(),
-                        lon = attrs["lon"]!!.toDouble(),
+                        position = LatLon(attrs["lat"]!!.toDouble(), attrs["lon"]!!.toDouble()),
                         version = attrs["version"]!!.toInt(),
                         timestamp = attrs["timestamp"]!!,
                         tags = HashMap()

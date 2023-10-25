@@ -19,7 +19,7 @@ fun writeOsm(nodes: List<OsmNode>, file: File) {
     }
 }
 
-fun writeOsmChange(modified: List<OsmNode>, deleted: List<OsmNode>, file: File) {
+fun writeOsmChange(added: List<OsmNode>, modified: List<OsmNode>, deleted: List<OsmNode>, file: File) {
     val fos = FileOutputStream(file)
     val bos = BufferedOutputStream(fos)
     XMLOutputFactory.newFactory().createXMLStreamWriter(bos).write {
@@ -27,21 +27,17 @@ fun writeOsmChange(modified: List<OsmNode>, deleted: List<OsmNode>, file: File) 
             attr("version", "0.6")
             attr("generator", "hh-import-trees")
             writeCharacters("\n")
-            if (modified.isNotEmpty()) {
-                element("modify") {
-                    writeCharacters("\n")
-                    for (node in modified) {
-                        osmNode(node)
-                    }
-                }
+            element("create") {
+                writeCharacters("\n")
+                added.forEach { osmNode(it) }
             }
-            if (deleted.isNotEmpty()) {
-                element("delete") {
-                    writeCharacters("\n")
-                    for (node in deleted) {
-                        osmNode(node)
-                    }
-                }
+            element("modify") {
+                writeCharacters("\n")
+                modified.forEach { osmNode(it) }
+            }
+            element("delete") {
+                writeCharacters("\n")
+                deleted.forEach { osmNode(it) }
             }
         }
     }
@@ -64,8 +60,8 @@ private fun XMLStreamWriter.osmNode(node: OsmNode) {
     element("node") {
         attr("id", node.id)
         attr("version", node.version)
-        attr("lat", node.lat.format(7))
-        attr("lon", node.lon.format(7))
+        attr("lat", node.position.latitude.format(7))
+        attr("lon", node.position.longitude.format(7))
         writeCharacters("\n")
         for ((key, value) in node.tags) {
             element("tag") {

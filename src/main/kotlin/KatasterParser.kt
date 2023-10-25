@@ -87,8 +87,7 @@ private fun transformKatasterToOsm(tags: Map<String, String>, id: Long): OsmNode
         id = id,
         version = 1,
         timestamp = null,
-        lat = tags.getValue("lat").toDouble(),
-        lon = tags.getValue("lon").toDouble(),
+        position = LatLon(tags.getValue("lat").toDouble(), tags.getValue("lon").toDouble()),
         tags = osmTags
     )
 }
