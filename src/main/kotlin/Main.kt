@@ -5,7 +5,12 @@ import java.net.URL
 import java.net.URLEncoder
 import java.time.Instant
 
-const val SAFE_TREE_DISTANCE = 10.0
+// Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
+// Baum aus dem Kataster ohne Review hinzugefügt werden kann.
+const val SAFE_TREE_DISTANCE = 8.0
+// Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
+// Baum aus dem Kataster ohne Review mit diesem Baum gemergt wird.
+const val TREE_MERGE_DISTANCE = 1.5
 // Hamburg. So groß wegen Neuwerk
 val IMPORT_AREA = BoundingBox(53.3951118, 8.1044993, 54.0276500, 10.3252805)
 // Relation #62782 in OSM ist Hamburg
@@ -56,9 +61,11 @@ fun main(args: Array<String>) {
 
     val osmKatasterTreesById = osmKatasterTrees.associateBy { it.tags["ref"]!! }
 
-    // sortiere alle Bäume in ein Raster aus ~30x30m
+    // sortiere alle nicht-Kataster Bäume in ein Raster aus ~30x30m
     val osmOtherTreesRaster = LatLonRaster(IMPORT_AREA, 0.0005)
     osmOtherTrees.forEach { osmOtherTreesRaster.insert(it.position) }
+    // und noch ein Index nach Position
+    val osmOtherTreesByPosition = osmOtherTrees.associateBy { it.position }
 
     // neu gepflanzt aber schon (ohne Baumnummer) in OSM vorhanden
     val addedTreesNearOtherOsmTrees = ArrayList<OsmNode>()
@@ -69,27 +76,50 @@ fun main(args: Array<String>) {
 
     katasterTreesById.values.forEach { katasterTree ->
         val osmTree = osmKatasterTreesById[katasterTree.tags["ref"]]
+        // Kataster-Baum bereits in OSM-Daten vorhanden
         if (osmTree != null) {
-            // Die Position des Bäumes wird NICHT upgedatet: OSMler sollen die Bäume ein paar Pixel herumschieben können
-            // Die baumids (refs) der Kataster-Bäume sind nämlich stabil
+
+            // Die Position des Bäumes wird NICHT upgedatet: Mapper sollen die Bäume herumschieben können,
+            // die baumids (refs) der Kataster-Bäume sind nämlich stabil
             val somethingChanged = katasterTree.tags.any { (k,v) -> osmTree.tags[k] != v }
             if (somethingChanged) {
-
+                // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
                 val osmCheckDate = osmTree.tags["check_date"]?.toInstant()
                     ?: osmTree.timestamp?.let { Instant.parse(it) }
                 val katasterCheckDate = katasterTree.tags["check_date"]?.toInstant()
+
                 if (osmCheckDate == null || katasterCheckDate == null || osmCheckDate.isBefore(katasterCheckDate)) {
                     osmTree.tags.putAll(katasterTree.tags)
                     updatedTrees.add(osmTree)
                 }
             }
-        } else {
-            val anyOtherOsmTreeIsNear = osmOtherTreesRaster
-                .getAll(katasterTree.position.enclosingBoundingBox(SAFE_TREE_DISTANCE))
-                .any { katasterTree.position.distanceTo(it) < SAFE_TREE_DISTANCE }
 
-            if (anyOtherOsmTreeIsNear) {
-                addedTreesNearOtherOsmTrees.add(katasterTree)
+        // Kataster-Baum noch nicht in OSM-Daten vorhanden
+        } else {
+            val nearestOtherOsmTreePos = osmOtherTreesRaster
+                .getAll(katasterTree.position.enclosingBoundingBox(SAFE_TREE_DISTANCE))
+                .minByOrNull { katasterTree.position.distanceTo(it) }
+
+            val nearestOtherOsmTreeDistance = nearestOtherOsmTreePos?.let { katasterTree.position.distanceTo(it) }
+
+            if (nearestOtherOsmTreeDistance != null && nearestOtherOsmTreeDistance < SAFE_TREE_DISTANCE) {
+                if (nearestOtherOsmTreeDistance <= TREE_MERGE_DISTANCE) {
+                    val osmOtherTree = osmOtherTreesByPosition[nearestOtherOsmTreePos]!!
+
+                    // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
+                    val osmCheckDate = osmOtherTree.tags["check_date"]?.toInstant()
+                        ?: osmOtherTree.timestamp?.let { Instant.parse(it) }
+                    val katasterCheckDate = katasterTree.tags["check_date"]?.toInstant()
+
+                    if (osmCheckDate == null || katasterCheckDate == null || osmCheckDate.isBefore(katasterCheckDate)) {
+                        osmOtherTree.tags.putAll(katasterTree.tags)
+                        updatedTrees.add(osmOtherTree)
+                    } else {
+                        addedTreesNearOtherOsmTrees.add(katasterTree)
+                    }
+                } else {
+                    addedTreesNearOtherOsmTrees.add(katasterTree)
+                }
             } else {
                 addedTrees.add(katasterTree)
             }
@@ -120,8 +150,9 @@ fun main(args: Array<String>) {
         println("""
             Schreibe ${outputAdded}...
             --------------------
-            ${addedTreesNearOtherOsmTrees.size} Straßenbäume kommen hinzu, aber sind jeweils unter ${SAFE_TREE_DISTANCE}m von einem bereits gemappten Baum entfernt
-            ACHTUNG: Daher ist für diese ein manuelles Review erforderlich
+            ${addedTreesNearOtherOsmTrees.size} Straßenbäume kommen hinzu, aber deren Mittelpunkte sind jeweils 
+            zwischen $TREE_MERGE_DISTANCE und $SAFE_TREE_DISTANCE Metern von einem bereits gemappten Baum entfernt.
+            ACHTUNG: Diese sollten manuell reviewt werden.
             
         """.trimIndent())
         writeOsm(addedTreesNearOtherOsmTrees, outputAdded)
