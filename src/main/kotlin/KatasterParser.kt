@@ -7,9 +7,14 @@ import javax.xml.stream.events.XMLEvent
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
+private data class KatasterTree(
+    val tags: Map<String, String>,
+    val isHPA: Boolean
+)
+
 fun parseKataster(inputStream: InputStream): List<OsmNode> {
     val reader = XMLInputFactory.newDefaultFactory().createXMLStreamReader(inputStream)
-    val trees = ArrayList<Map<String, String>>()
+    val trees = ArrayList<KatasterTree>()
     var tree: MutableMap<String, String>? = null
     val elements = ArrayList<String>()
     val crsFactory = CRSFactory()
@@ -36,7 +41,7 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
             XMLEvent.END_ELEMENT -> {
                 val name = reader.name.localPart
                 if (name == "featureMember") {
-                    trees.add(tree!!)
+                    trees.add(KatasterTree(tree!!, isHPA))
                     tree = null
                 }
                 elements.removeLast()
@@ -61,8 +66,8 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
             }
         }
     }
-    return trees.mapIndexed { index, tags ->
-        transformKatasterToOsm(tags, -(index + 1L), isHPA, publicationTimeStamp!!)
+    return trees.mapIndexed { index, t ->
+        transformKatasterToOsm(t.tags, -(index + 1L), t.isHPA, publicationTimeStamp!!)
     }
 }
 
