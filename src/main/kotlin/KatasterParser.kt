@@ -13,6 +13,8 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
     var tree: MutableMap<String, String>? = null
     val elements = ArrayList<String>()
     val crsFactory = CRSFactory()
+    var publicationTimeStamp: String? = null
+    var isHPA = false
     val transform = CoordinateTransformFactory().createTransform(
         crsFactory.createFromName("epsg:25832"),
         crsFactory.createFromName("epsg:4326")
@@ -21,13 +23,13 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
         when (reader.next()) {
             XMLEvent.START_ELEMENT -> {
                 val name = reader.name.localPart
-                if (name == "featureMember") {
-                    tree = HashMap()
-                }
-                // check if points are in expected coordinate system
-                if (name == "Point" && reader.prefix == "gml") {
-                    val attrs = reader.attributes.toMap()
-                    check(attrs["srsName"] == "EPSG:25832")
+                when (name) {
+                    "strassenbaumkataster" -> isHPA = false
+                    "strassenbaumkataster_hpa" -> isHPA = true
+                    "FeatureCollection" -> publicationTimeStamp = reader.attributes["timeStamp"]!!
+                    "featureMember" -> tree = HashMap()
+                    // check if points are in expected coordinate system
+                    "Point" -> check(reader.attributes["srsName"] == "EPSG:25832")
                 }
                 elements.add(name)
             }
@@ -59,15 +61,20 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
             }
         }
     }
-    return trees.mapIndexed { index, tags -> transformKatasterToOsm(tags, -(index + 1L)) }
+    return trees.mapIndexed { index, tags ->
+        transformKatasterToOsm(tags, -(index + 1L), isHPA, publicationTimeStamp!!)
+    }
 }
 
-private fun transformKatasterToOsm(tags: Map<String, String>, id: Long): OsmNode {
+private fun transformKatasterToOsm(
+    tags: Map<String, String>,
+    id: Long,
+    isHPA: Boolean,
+    publicationTimeStamp: String
+): OsmNode {
     val osmTags = HashMap<String, String>()
     osmTags["natural"] = "tree"
-    // TODO was ist mit HPA?!
-    // TODO: stand_bearbeitung gibt es nur bei HPA, für BUKEA wäre das wohl das Datum der Veröffentlichung
-    osmTags["operator"] = "BUKEA Hamburg"
+    osmTags["operator"] = if (isHPA) "Hamburg Port Authority" else "BUKEA Hamburg"
     osmTags.putAll(tags.mapNotNull { (k, v) ->
         when (k) {
             "baumid" -> "ref" to v
@@ -86,7 +93,7 @@ private fun transformKatasterToOsm(tags: Map<String, String>, id: Long): OsmNode
     return OsmNode(
         id = id,
         version = 1,
-        timestamp = null,
+        timestamp = publicationTimeStamp,
         position = LatLon(tags.getValue("lat").toDouble(), tags.getValue("lon").toDouble()),
         tags = osmTags
     )

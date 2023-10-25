@@ -12,7 +12,7 @@ fun parseOsmNodes(inputStream: InputStream): List<OsmNode> {
             XMLEvent.START_ELEMENT -> {
                 val name = reader.name.localPart
                 if (name == "node") {
-                    val attrs = reader.attributes.toMap()
+                    val attrs = reader.attributes
                     node = OsmNode(
                         id = attrs["id"]!!.toLong(),
                         position = LatLon(attrs["lat"]!!.toDouble(), attrs["lon"]!!.toDouble()),
@@ -22,7 +22,7 @@ fun parseOsmNodes(inputStream: InputStream): List<OsmNode> {
                     )
                 }
                 if (name == "tag") {
-                    val attrs = reader.attributes.toMap()
+                    val attrs = reader.attributes
                     val key = attrs["k"]!!
                     val value = attrs["v"]!!
                     node!!.tags[key] = value

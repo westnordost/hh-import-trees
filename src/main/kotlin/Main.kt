@@ -55,8 +55,9 @@ fun main(args: Array<String>) {
 
     val katasterTreesById = katasterTrees.associateBy { it.tags["ref"]!! }
 
+    val baumkatasterOperators = setOf("BUKEA Hamburg", "Hamburg Port Authority")
     val (osmKatasterTrees, osmOtherTrees) = osmTrees.partition {
-        it.tags["operator"] == "BUKEA Hamburg" && it.tags["ref"] != null
+        it.tags["operator"] in baumkatasterOperators && it.tags["ref"] != null
     }
 
     val osmKatasterTreesById = osmKatasterTrees.associateBy { it.tags["ref"]!! }
@@ -84,14 +85,14 @@ fun main(args: Array<String>) {
             val somethingChanged = katasterTree.tags.any { (k,v) -> osmTree.tags[k] != v }
             if (somethingChanged) {
                 // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
-                val osmCheckDate = osmTree.tags["check_date"]?.toInstant()
-                    ?: osmTree.timestamp?.let { Instant.parse(it) }
-                val katasterCheckDate = katasterTree.tags["check_date"]?.toInstant()
+                val osmCheckDate = osmTree.checkDateOrLastEditDate()
+                val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
-                if (osmCheckDate == null || katasterCheckDate == null || osmCheckDate.isBefore(katasterCheckDate)) {
+                if (osmCheckDate.isBefore(katasterCheckDate)) {
                     osmTree.tags.putAll(katasterTree.tags)
                     updatedTrees.add(osmTree)
                 }
+                // (ansonsten, Update des Katasters ignorieren)
             }
 
         // Kataster-Baum noch nicht in OSM-Daten vorhanden
@@ -106,15 +107,16 @@ fun main(args: Array<String>) {
                 if (nearestOtherOsmTreeDistance <= TREE_MERGE_DISTANCE) {
                     val osmOtherTree = osmOtherTreesByPosition[nearestOtherOsmTreePos]!!
 
-                    // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
-                    val osmCheckDate = osmOtherTree.tags["check_date"]?.toInstant()
-                        ?: osmOtherTree.timestamp?.let { Instant.parse(it) }
-                    val katasterCheckDate = katasterTree.tags["check_date"]?.toInstant()
+                    val osmCheckDate = osmOtherTree.checkDateOrLastEditDate()
+                    val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
-                    if (osmCheckDate == null || katasterCheckDate == null || osmCheckDate.isBefore(katasterCheckDate)) {
+                    // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
+                    if (osmCheckDate.isBefore(katasterCheckDate)) {
                         osmOtherTree.tags.putAll(katasterTree.tags)
                         updatedTrees.add(osmOtherTree)
-                    } else {
+                    }
+                    // ansonsten muss manuell reviewt werden
+                    else {
                         addedTreesNearOtherOsmTrees.add(katasterTree)
                     }
                 } else {
@@ -158,3 +160,8 @@ fun main(args: Array<String>) {
         writeOsm(addedTreesNearOtherOsmTrees, outputAdded)
     }
 }
+
+private fun OsmNode.checkDateOrLastEditDate(): Instant =
+    tags["check_date"]?.toInstant()
+    ?: tags["survey:date"]?.toInstant()
+    ?: Instant.parse(timestamp)

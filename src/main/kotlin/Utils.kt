@@ -8,7 +8,7 @@ val XMLStreamReader.attributes get() = sequence<Pair<String, String>> {
     for (i in 0 until attributeCount) {
         yield(getAttributeLocalName(i) to getAttributeValue(i))
     }
-}
+}.toMap()
 
 fun Double.format(decimals: Int) = String.format(Locale.US, "%.${decimals}f", this)
 
