@@ -97,23 +97,28 @@ fun main(args: Array<String>) {
 
         // Kataster-Baum noch nicht in OSM-Daten vorhanden
         } else {
-            val nearestOtherOsmTreePos = osmOtherTreesRaster
+            val nearestOtherOsmTree = osmOtherTreesRaster
                 .getAll(katasterTree.position.enclosingBoundingBox(SAFE_TREE_DISTANCE))
-                .minByOrNull { katasterTree.position.distanceTo(it) }
+                .map { osmOtherTreesByPosition[it]!! }
+                // OSM-Bäume die bereits ein "ref" haben, herausfiltern, um folgende Situation korrekt zu handlen:
+                // Zwei Kataster-Bäume A,B sind sehr dicht an OSM-Bäumen X,Y dran, so dass diese gemergt werden sollen.
+                // Allerdings sind sowohl A als auch B dichter dran an X als an Y. Ohne dass X ausscheidet wenn z.B.
+                // A damit gemergt wird, würden A und B beide mit X mergen und sich daher gegenseitig überschreiben,
+                // während Y nicht mit irgendeinem Baum aus dem Kataster gemergt wird.
+                .filter { it.tags["ref"] == null }
+                .minByOrNull { katasterTree.position.distanceTo(it.position) }
 
-            val nearestOtherOsmTreeDistance = nearestOtherOsmTreePos?.let { katasterTree.position.distanceTo(it) }
+            val nearestOtherOsmTreeDistance = nearestOtherOsmTree?.position?.let { katasterTree.position.distanceTo(it) }
 
             if (nearestOtherOsmTreeDistance != null && nearestOtherOsmTreeDistance < SAFE_TREE_DISTANCE) {
                 if (nearestOtherOsmTreeDistance <= TREE_MERGE_DISTANCE) {
-                    val osmOtherTree = osmOtherTreesByPosition[nearestOtherOsmTreePos]!!
-
-                    val osmCheckDate = osmOtherTree.checkDateOrLastEditDate()
+                    val osmCheckDate = nearestOtherOsmTree.checkDateOrLastEditDate()
                     val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
                     // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
                     if (osmCheckDate.isBefore(katasterCheckDate)) {
-                        osmOtherTree.tags.putAll(katasterTree.tags)
-                        updatedTrees.add(osmOtherTree)
+                        nearestOtherOsmTree.tags.putAll(katasterTree.tags)
+                        updatedTrees.add(nearestOtherOsmTree)
                     }
                     // ansonsten muss manuell reviewt werden
                     else {
