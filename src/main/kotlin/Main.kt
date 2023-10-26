@@ -68,14 +68,14 @@ fun main(args: Array<String>) {
     // und noch ein Index nach Position
     val osmOtherTreesByPosition = osmOtherTrees.associateBy { it.position }
 
-    // neu gepflanzt aber schon (ohne Baumnummer) in OSM vorhanden
+    // neu hinzugekommen aber ein Baum der bereits in OSM vorhanden hat ist relativ nah dran
     val addedTreesNearOtherOsmTrees = ArrayList<OsmNode>()
-    // neu gepflanzt
+    // neu hinzugekommen
     val addedTrees = ArrayList<OsmNode>()
     // nach wie vor bestehend aber ein Attribut hat sich verändert
     val updatedTrees = ArrayList<OsmNode>()
 
-    katasterTreesById.values.forEach { katasterTree ->
+    for (katasterTree in katasterTrees) {
         val osmTree = osmKatasterTreesById[katasterTree.tags["ref"]]
         // Kataster-Baum bereits in OSM-Daten vorhanden
         if (osmTree != null) {
