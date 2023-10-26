@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.westnordost"
-version = "1.0"
+version = "0.1"
 
 repositories {
     mavenCentral()
@@ -21,4 +21,17 @@ kotlin {
 
 application {
     mainClass.set("MainKt")
+}
+
+tasks.register<Jar>("fatJar") {
+    group = "build"
+    manifest.attributes["Main-Class"] = "MainKt"
+
+    from(sourceSets.main.get().output)
+
+    dependsOn(configurations.runtimeClasspath)
+    from(configurations.runtimeClasspath.get().map {
+        if (it.isDirectory) it else zipTree(it)
+    })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
