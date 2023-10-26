@@ -8,7 +8,7 @@ import java.time.Instant
 // Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
 // Baum aus dem Kataster ohne Review hinzugefügt werden kann.
 const val SAFE_TREE_DISTANCE = 8.0
-// Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
+// Maximale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
 // Baum aus dem Kataster ohne Review mit diesem Baum gemergt wird.
 const val TREE_MERGE_DISTANCE = 1.5
 // Hamburg. So groß wegen Neuwerk
