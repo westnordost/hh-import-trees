@@ -38,7 +38,7 @@ fun main(args: Array<String>) {
     val katasterTrees = parseKataster(BufferedInputStream(FileInputStream(input)))
     // Erwarte, dass alle Bäume im Kataster eine Nummer haben
     for (katasterTree in katasterTrees) {
-        check(katasterTree.tags["ref"] != null)
+        check(katasterTree.tags["ref:bukea"] != null)
     }
 
     println("Lade Bäume aus OpenStreetMap via Overpass...")
@@ -53,14 +53,11 @@ fun main(args: Array<String>) {
 
     println("Verarbeite...")
 
-    val katasterTreesById = katasterTrees.associateBy { it.tags["ref"]!! }
+    val katasterTreesById = katasterTrees.associateBy { it.tags["ref:bukea"]!! }
 
-    val baumkatasterOperators = setOf("BUKEA Hamburg", "Hamburg Port Authority")
-    val (osmKatasterTrees, osmOtherTrees) = osmTrees.partition {
-        it.tags["operator"] in baumkatasterOperators && it.tags["ref"] != null
-    }
+    val (osmKatasterTrees, osmOtherTrees) = osmTrees.partition { it.tags["ref:bukea"] != null }
 
-    val osmKatasterTreesById = osmKatasterTrees.associateBy { it.tags["ref"]!! }
+    val osmKatasterTreesById = osmKatasterTrees.associateBy { it.tags["ref:bukea"]!! }
 
     // sortiere alle nicht-Kataster Bäume in ein Raster aus ~30x30m
     val osmOtherTreesRaster = LatLonRaster(IMPORT_AREA, 0.0005)
@@ -68,7 +65,7 @@ fun main(args: Array<String>) {
     // und noch ein Index nach Position
     val osmOtherTreesByPosition = osmOtherTrees.associateBy { it.position }
 
-    // neu hinzugekommen aber ein Baum der bereits in OSM vorhanden hat ist relativ nah dran
+    // neu hinzugekommen aber ein Baum der bereits in OSM vorhanden hat, ist relativ nah dran
     val addedTreesNearOtherOsmTrees = ArrayList<OsmNode>()
     // neu hinzugekommen
     val addedTrees = ArrayList<OsmNode>()
@@ -76,7 +73,7 @@ fun main(args: Array<String>) {
     val updatedTrees = ArrayList<OsmNode>()
 
     for (katasterTree in katasterTrees) {
-        val osmTree = osmKatasterTreesById[katasterTree.tags["ref"]]
+        val osmTree = osmKatasterTreesById[katasterTree.tags["ref:bukea"]]
         // Kataster-Baum bereits in OSM-Daten vorhanden
         if (osmTree != null) {
 
@@ -100,12 +97,12 @@ fun main(args: Array<String>) {
             val nearestOtherOsmTree = osmOtherTreesRaster
                 .getAll(katasterTree.position.enclosingBoundingBox(SAFE_TREE_DISTANCE))
                 .map { osmOtherTreesByPosition[it]!! }
-                // OSM-Bäume die bereits ein "ref" haben, herausfiltern, um folgende Situation korrekt zu handlen:
+                // OSM-Bäume die bereits ein "ref:bukea" haben, herausfiltern, um folgende Situation korrekt zu handlen:
                 // Zwei Kataster-Bäume A,B sind sehr dicht an OSM-Bäumen X,Y dran, so dass diese gemergt werden sollen.
                 // Allerdings sind sowohl A als auch B dichter dran an X als an Y. Ohne dass X ausscheidet wenn z.B.
                 // A damit gemergt wird, würden A und B beide mit X mergen und sich daher gegenseitig überschreiben,
                 // während Y nicht mit irgendeinem Baum aus dem Kataster gemergt wird.
-                .filter { it.tags["ref"] == null }
+                .filter { it.tags["ref:bukea"] == null }
                 .minByOrNull { katasterTree.position.distanceTo(it.position) }
 
             val nearestOtherOsmTreeDistance = nearestOtherOsmTree?.position?.let { katasterTree.position.distanceTo(it) }
@@ -135,7 +132,7 @@ fun main(args: Array<String>) {
 
     // vermutlich gefällt, jedenfalls nicht mehr im Kataster
     val removedTrees = osmKatasterTreesById.values.filter { osmTree ->
-        osmTree.tags["ref"] !in katasterTreesById.keys
+        osmTree.tags["ref:bukea"] !in katasterTreesById.keys
     }
 
     println()

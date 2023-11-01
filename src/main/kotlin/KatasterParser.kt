@@ -79,10 +79,9 @@ private fun transformKatasterToOsm(
 ): OsmNode {
     val osmTags = HashMap<String, String>()
     osmTags["natural"] = "tree"
-    osmTags["operator"] = if (isHPA) "Hamburg Port Authority" else "BUKEA Hamburg"
     osmTags.putAll(tags.mapNotNull { (k, v) ->
         when (k) {
-            "baumid" -> "ref" to v
+            "baumid" -> "ref:bukea" to v
             "pflanzjahr" -> "start_date" to v
             "kronendurchmesser" -> "diameter_crown" to v
             "stammumfang" -> "circumference" to (v.toDouble() / 100).format(2)
