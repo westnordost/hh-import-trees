@@ -6,11 +6,12 @@ import java.net.URLEncoder
 import java.time.Instant
 
 // Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
-// Baum aus dem Kataster ohne Review hinzugefügt werden kann.
-const val SAFE_TREE_DISTANCE = 8.0
+// Baum aus dem Kataster ohne Review als neuer Baum hinzugefügt werden kann.
+const val SAFE_TREE_DISTANCE = 8.0 // = ungefähr "andere Straßenseite" in Wohnstraßen
 // Maximale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
-// Baum aus dem Kataster ohne Review mit diesem Baum gemergt wird.
-const val TREE_MERGE_DISTANCE = 1.5
+// Baum aus dem Kataster ohne Review mit diesem Baum gemergt wird. (von Mittelpunkt des Stammes zu Mittelpunkt des 
+// Stammes)
+const val TREE_MERGE_DISTANCE = 2.0
 // Hamburg. So groß wegen Neuwerk
 val IMPORT_AREA = BoundingBox(53.3951118, 8.1044993, 54.0276500, 10.3252805)
 // Relation #62782 in OSM ist Hamburg
