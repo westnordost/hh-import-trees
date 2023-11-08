@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
         return println("Straßenbaumkataster-Datei existiert nicht")
     }
 
-    val outputAdded = File("$inputPath-neu.osm")
+    val outputAdded = File("$inputPath-review.osm")
     if (outputAdded.exists()) {
         return println("Ausgabe-Datei ${outputAdded.name} existiert bereits")
     }
