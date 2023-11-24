@@ -6,6 +6,7 @@ import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.XMLEvent
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import kotlin.math.PI
 
 private data class KatasterTree(
     val tags: Map<String, String>,
@@ -105,6 +106,17 @@ private fun transformKatasterToOsm(
             else -> null
         }
     })
+
+    // SEHR implausible Daten entfernen
+    val trunkCircumference = osmTags["circumference"]?.toDouble()
+    val crownDiameter = osmTags["diameter_crown"]?.toDouble()
+    if (trunkCircumference != null && crownDiameter != null) {
+        val ratio = crownDiameter * PI / trunkCircumference
+        if (ratio < 2 || ratio > 100) {
+            osmTags.remove("circumference")
+            osmTags.remove("diameter_crown")
+        }
+    }
 
     return OsmNode(
         id = id,
