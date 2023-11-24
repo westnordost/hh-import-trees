@@ -110,8 +110,17 @@ private fun transformKatasterToOsm(
         }
     })
 
-    // wenn taxon gleicher Wert wie Species, entfernen
-    if (osmTags["taxon"] == osmTags["species"]) {
+    // wenn species gleicher Wert wie genus, entfernen:
+    // auch wenn explizit geschrieben steht, dass die Art unbekannt ist
+    if (osmTags["species"] == osmTags["genus"] || osmTags["species"]?.endsWith(" spec.") == true) {
+        osmTags.remove("species")
+    }
+    if (osmTags["species:de"] == osmTags["genus:de"] || osmTags["species:de"]?.endsWith(" Art unbekannt") == true) {
+        osmTags.remove("species:de")
+    }
+
+    // wenn taxon gleicher Wert wie Species oder genus, entfernen
+    if (osmTags["taxon"] == osmTags["species"] || osmTags["taxon"] == osmTags["genus"]) {
         osmTags.remove("taxon")
     }
     // taxon:cultivar aus taxon extrahieren
