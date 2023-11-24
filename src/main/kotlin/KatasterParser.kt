@@ -87,8 +87,16 @@ private fun transformKatasterToOsm(
                 val year = v.toIntOrNull()?.takeIf { it != 0 }
                 if (year != null) "start_date" to v else null
             }
-            "kronendurchmesser" -> "diameter_crown" to v
-            "stammumfang" -> "circumference" to (v.toDouble() / 100).format(2)
+            "kronendurchmesser" -> {
+                // einige Bäume im Quelldatensatz haben kronendurchmesser = 0
+                val diameter = v.toIntOrNull()?.takeIf { it != 0 }
+                if (diameter != null) "diameter_crown" to v else null
+            }
+            "stammumfang" -> {
+                // einige Bäume im Quelldatensatz haben stammumfang = 0
+                val circumference = v.toDoubleOrNull()?.takeIf { it != 0.0 }
+                if (circumference != null) "circumference" to (circumference / 100).format(2) else null
+            }
             "stand_bearbeitung" -> "check_date" to v
             "gattung_latein" -> "genus" to v
             "gattung_deutsch" -> "genus:de" to v
