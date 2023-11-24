@@ -26,13 +26,13 @@ fun main(args: Array<String>) {
         return println("Straßenbaumkataster-Datei existiert nicht")
     }
 
-    val outputAdded = File("$inputPath-review.osm")
-    if (outputAdded.exists()) {
-        return println("Ausgabe-Datei ${outputAdded.name} existiert bereits")
+    val outputToBeReviewed = File("$inputPath-review.osm")
+    if (outputToBeReviewed.exists()) {
+        return println("Ausgabe-Datei ${outputToBeReviewed.name} existiert bereits")
     }
-    val outputModifiedDeleted = File("$inputPath-aenderungen.osc")
-    if (outputModifiedDeleted.exists()) {
-        return println("Ausgabe-Datei ${outputModifiedDeleted.name} existiert bereits")
+    val outputToBeApplied = File("$inputPath-aenderungen.osc")
+    if (outputToBeApplied.exists()) {
+        return println("Ausgabe-Datei ${outputToBeApplied.name} existiert bereits")
     }
 
     println("Lade Straßenbaumkataster-Datei...")
@@ -73,6 +73,7 @@ fun main(args: Array<String>) {
     // nach wie vor bestehend aber ein Attribut hat sich verändert
     val updatedTrees = ArrayList<OsmNode>()
 
+
     for (katasterTree in katasterTrees) {
         val osmTree = osmKatasterTreesById[katasterTree.tags["ref:bukea"]]
         // Kataster-Baum bereits in OSM-Daten vorhanden
@@ -87,46 +88,55 @@ fun main(args: Array<String>) {
                 val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
                 if (osmCheckDate.isBefore(katasterCheckDate)) {
+                    // → kann ohne Review aktualisiert werden
                     osmTree.tags.putAll(katasterTree.tags)
                     updatedTrees.add(osmTree)
                 }
                 // (ansonsten, Update des Katasters ignorieren)
             }
-
+        }
         // Kataster-Baum noch nicht in OSM-Daten vorhanden
-        } else {
-            val nearestOtherOsmTree = osmOtherTreesRaster
+        else {
+            val nearOtherOsmTrees = osmOtherTreesRaster
                 .getAll(katasterTree.position.enclosingBoundingBox(SAFE_TREE_DISTANCE))
+                .filter { katasterTree.position.distanceTo(it) < SAFE_TREE_DISTANCE }
                 .map { osmOtherTreesByPosition[it]!! }
-                // OSM-Bäume die bereits ein "ref:bukea" haben, herausfiltern, um folgende Situation korrekt zu handlen:
-                // Zwei Kataster-Bäume A,B sind sehr dicht an OSM-Bäumen X,Y dran, so dass diese gemergt werden sollen.
-                // Allerdings sind sowohl A als auch B dichter dran an X als an Y. Ohne dass X ausscheidet wenn z.B.
-                // A damit gemergt wird, würden A und B beide mit X mergen und sich daher gegenseitig überschreiben,
-                // während Y nicht mit irgendeinem Baum aus dem Kataster gemergt wird.
-                .filter { it.tags["ref:bukea"] == null }
-                .minByOrNull { katasterTree.position.distanceTo(it.position) }
+                .toList()
 
-            val nearestOtherOsmTreeDistance = nearestOtherOsmTree?.position?.let { katasterTree.position.distanceTo(it) }
+            // in OSM bisher kein Baum im Umfeld vorhanden
+            if (nearOtherOsmTrees.isEmpty()) {
+                // → Katasterbaum kann ohne Review hinzugefügt werden
+                addedTrees.add(katasterTree)
+            }
+            // in OSM mehr als ein Baum im Umfeld vorhanden
+            else if (nearOtherOsmTrees.size > 1) {
+                // → Baum muss manuell reviewt werden
+                addedTreesNearOtherOsmTrees.add(katasterTree)
+            }
+            // in OSM genau ein Baum im Umfeld vorhanden
+            else {
+                val nearOtherOsmTree = nearOtherOsmTrees.single()
 
-            if (nearestOtherOsmTreeDistance != null && nearestOtherOsmTreeDistance < SAFE_TREE_DISTANCE) {
-                if (nearestOtherOsmTreeDistance <= TREE_MERGE_DISTANCE) {
-                    val osmCheckDate = nearestOtherOsmTree.checkDateOrLastEditDate()
-                    val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
+                val osmCheckDate = nearOtherOsmTree.checkDateOrLastEditDate()
+                val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
-                    // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
-                    if (osmCheckDate.isBefore(katasterCheckDate)) {
-                        nearestOtherOsmTree.tags.putAll(katasterTree.tags)
-                        updatedTrees.add(nearestOtherOsmTree)
-                    }
-                    // ansonsten muss manuell reviewt werden
-                    else {
-                        addedTreesNearOtherOsmTrees.add(katasterTree)
-                    }
-                } else {
+                // und dieser Baum ist nah genug dran
+                // und Bearbeitungsdatum aus Baumkataster ist jünger als zuletzt von Mappern bearbeitet
+                // und Zusammenführen des Katasterbaumes mit dem OSM-Baum überschreibt keine Daten aus OSM mit anderen
+                //     Daten (z.B. andere Baumart)
+                if (katasterTree.position.distanceTo(nearOtherOsmTree.position) <= TREE_MERGE_DISTANCE
+                    && katasterCheckDate.isAfter(osmCheckDate)
+                    && katasterTree.tags.hasNoConflictsWith(nearOtherOsmTree.tags)
+                ) {
+                    // → Tags des Katasterbaumes ohne Review zum vorhandenen OSM Baum hinzufügen
+                    nearOtherOsmTree.tags.putAll(katasterTree.tags)
+                    updatedTrees.add(nearOtherOsmTree)
+                }
+                // ansonsten...
+                else {
+                    // → Baum muss manuell reviewt werden
                     addedTreesNearOtherOsmTrees.add(katasterTree)
                 }
-            } else {
-                addedTrees.add(katasterTree)
             }
         }
     }
@@ -140,7 +150,7 @@ fun main(args: Array<String>) {
 
     if (addedTrees.isNotEmpty() || updatedTrees.isNotEmpty() || removedTrees.isNotEmpty()) {
         println("""
-            Schreibe ${outputModifiedDeleted}...
+            Schreibe ${outputToBeApplied}...
             --------------------
             ${addedTrees.size} Straßenbäume kommen neu hinzu
             ${updatedTrees.size} Straßenbäume wurden aktualisiert
@@ -148,19 +158,19 @@ fun main(args: Array<String>) {
             
             """.trimIndent()
         )
-        writeOsmChange(addedTrees, updatedTrees, removedTrees, outputModifiedDeleted)
+        writeOsmChange(addedTrees, updatedTrees, removedTrees, outputToBeApplied)
     }
 
     if (addedTreesNearOtherOsmTrees.isNotEmpty()) {
         println("""
-            Schreibe ${outputAdded}...
+            Schreibe ${outputToBeReviewed}...
             --------------------
             ${addedTreesNearOtherOsmTrees.size} Straßenbäume kommen hinzu, aber deren Mittelpunkte sind jeweils 
             zwischen $TREE_MERGE_DISTANCE und $SAFE_TREE_DISTANCE Metern von einem bereits gemappten Baum entfernt.
             ACHTUNG: Diese sollten manuell reviewt werden.
             
         """.trimIndent())
-        writeOsm(addedTreesNearOtherOsmTrees, outputAdded)
+        writeOsm(addedTreesNearOtherOsmTrees, outputToBeReviewed)
     }
 }
 
@@ -168,3 +178,6 @@ private fun OsmNode.checkDateOrLastEditDate(): Instant =
     tags["check_date"]?.toInstant()
     ?: tags["survey:date"]?.toInstant()
     ?: Instant.parse(timestamp)
+
+private fun Map<String, String>.hasNoConflictsWith(other: Map<String,String>): Boolean =
+    all { (k, v) -> !other.containsKey(k) || other[k] == v }

@@ -83,7 +83,7 @@ private fun transformKatasterToOsm(
         when (k) {
             "baumid" -> "ref:bukea" to v
             "pflanzjahr" -> {
-                // some trees in source data set have Pflanzjahr = 0
+                // einige Bäume im Quelldatensatz haben Pflanzjahr = 0
                 val year = v.toIntOrNull()?.takeIf { it != 0 }
                 if (year != null) "start_date" to v else null
             }
