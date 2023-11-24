@@ -82,7 +82,11 @@ private fun transformKatasterToOsm(
     osmTags.putAll(tags.mapNotNull { (k, v) ->
         when (k) {
             "baumid" -> "ref:bukea" to v
-            "pflanzjahr" -> "start_date" to v
+            "pflanzjahr" -> {
+                // some trees in source data set have Pflanzjahr = 0
+                val year = v.toIntOrNull()?.takeIf { it != 0 }
+                if (year != null) "start_date" to v else null
+            }
             "kronendurchmesser" -> "diameter_crown" to v
             "stammumfang" -> "circumference" to (v.toDouble() / 100).format(2)
             "stand_bearbeitung" -> "check_date" to v
