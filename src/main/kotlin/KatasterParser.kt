@@ -103,9 +103,27 @@ private fun transformKatasterToOsm(
             "gattung_deutsch" -> "genus:de" to v
             "art_latein" -> "species" to v
             "art_deutsch" -> "species:de" to v
+            "sorte_latein" -> "taxon" to v
+            // Quelldaten scheinen dieses Feld vor allem als Sammlung von Synonymen für die gleiche Art zu nutzen
+            //"sorte_deutsch" -> "taxon:de" to v
             else -> null
         }
     })
+
+    // wenn taxon gleicher Wert wie Species, entfernen
+    if (osmTags["taxon"] == osmTags["species"]) {
+        osmTags.remove("taxon")
+    }
+    // taxon:cultivar aus taxon extrahieren
+    val taxon = osmTags["taxon"]
+    val taxonCultivarRegex = Regex(".*'(.*)'")
+    if (taxon != null) {
+        val match = taxonCultivarRegex.matchEntire(taxon)
+        if (match != null) {
+            osmTags["taxon:cultivar"] = match.groupValues[1]
+            osmTags.remove("taxon")
+        }
+    }
 
     // SEHR implausible Daten entfernen
     val trunkCircumference = osmTags["circumference"]?.toDouble()
