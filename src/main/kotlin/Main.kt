@@ -35,11 +35,13 @@ fun main(args: Array<String>) {
         return println("Ausgabe-Datei ${outputToBeApplied.name} existiert bereits")
     }
 
-    println("Lade Straßenbaumkataster-Datei...")
+    print("Lade Straßenbaumkataster-Datei...")
     val katasterTrees = loadKatasterTrees(input)
+    println(" " + katasterTrees.size + " Bäume gelesen")
 
-    println("Lade Bäume aus OpenStreetMap via Overpass...")
+    print("Lade Bäume aus OpenStreetMap via Overpass...")
     val osmTrees = retrieveOsmTreesInArea(IMPORT_AREA_RELATION)
+    println(" " + osmTrees.size + " Bäume gelesen")
 
     println("Verarbeite...")
 
