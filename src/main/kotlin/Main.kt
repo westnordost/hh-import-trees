@@ -36,21 +36,10 @@ fun main(args: Array<String>) {
     }
 
     println("Lade Straßenbaumkataster-Datei...")
-    val katasterTrees = parseKataster(BufferedInputStream(FileInputStream(input)))
-    // Erwarte, dass alle Bäume im Kataster eine Nummer haben
-    for (katasterTree in katasterTrees) {
-        check(katasterTree.tags["ref:bukea"] != null)
-    }
+    val katasterTrees = loadKatasterTrees(input)
 
     println("Lade Bäume aus OpenStreetMap via Overpass...")
-    val overpassQuery = """
-        area(36000$IMPORT_AREA_RELATION)->.searchArea;
-        node["natural"="tree"](area.searchArea);
-        out meta;
-        """.trimIndent()
-    val urlQuery = URLEncoder.encode(overpassQuery, Charsets.UTF_8)
-    val url = URL("http://overpass-api.de/api/interpreter?data=$urlQuery")
-    val osmTrees = parseOsmNodes(BufferedInputStream(url.openStream()))
+    val osmTrees = retrieveOsmTreesInArea(IMPORT_AREA_RELATION)
 
     println("Verarbeite...")
 
@@ -172,6 +161,27 @@ fun main(args: Array<String>) {
         """.trimIndent())
         writeOsm(addedTreesNearOtherOsmTrees, outputToBeReviewed)
     }
+}
+
+private fun loadKatasterTrees(file: File): List<OsmNode> {
+    val katasterTrees = parseKataster(BufferedInputStream(FileInputStream(file)))
+    // Erwarte, dass alle Bäume im Kataster eine Nummer haben
+    for (katasterTree in katasterTrees) {
+        val tags = katasterTree.tags
+        check(tags["ref:bukea"] != null || tags["ref:hpa"] != null) { "Nicht alle Bäume im Kataster haben eine ID!" }
+    }
+    return katasterTrees
+}
+
+private fun retrieveOsmTreesInArea(areaId: Long): List<OsmNode> {
+    val overpassQuery = """
+        area(36000$areaId)->.searchArea;
+        node["natural"="tree"](area.searchArea);
+        out meta;
+        """.trimIndent()
+    val urlQuery = URLEncoder.encode(overpassQuery, Charsets.UTF_8)
+    val url = URL("http://overpass-api.de/api/interpreter?data=$urlQuery")
+    return parseOsmNodes(BufferedInputStream(url.openStream()))
 }
 
 private fun OsmNode.checkDateOrLastEditDate(): Instant =
