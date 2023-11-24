@@ -67,6 +67,7 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
             }
         }
     }
+
     return trees.mapIndexed { index, t ->
         transformKatasterToOsm(t.tags, -(index + 1L), t.isHPA, publicationTimeStamp!!)
     }
@@ -82,7 +83,7 @@ private fun transformKatasterToOsm(
     osmTags["natural"] = "tree"
     osmTags.putAll(tags.mapNotNull { (k, v) ->
         when (k) {
-            "baumid" -> "ref:bukea" to v
+            "baumid" -> (if (isHPA) "ref:hpa" else "ref:bukea") to v
             "pflanzjahr" -> {
                 // einige Bäume im Quelldatensatz haben Pflanzjahr = 0
                 val year = v.toIntOrNull()?.takeIf { it != 0 }
@@ -104,8 +105,6 @@ private fun transformKatasterToOsm(
             "art_latein" -> "species" to v
             "art_deutsch" -> "species:de" to v
             "sorte_latein" -> "taxon" to v
-            // Quelldaten scheinen dieses Feld vor allem als Sammlung von Synonymen für die gleiche Art zu nutzen
-            //"sorte_deutsch" -> "taxon:de" to v
             else -> null
         }
     })

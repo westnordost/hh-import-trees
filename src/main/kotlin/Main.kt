@@ -43,11 +43,11 @@ fun main(args: Array<String>) {
 
     println("Verarbeite...")
 
-    val katasterTreesById = katasterTrees.associateBy { it.tags["ref:bukea"]!! }
+    val katasterTreesById = katasterTrees.associateBy { it.katasterId!! }
 
-    val (osmKatasterTrees, osmOtherTrees) = osmTrees.partition { it.tags["ref:bukea"] != null }
+    val (osmKatasterTrees, osmOtherTrees) = osmTrees.partition { it.katasterId != null }
 
-    val osmKatasterTreesById = osmKatasterTrees.associateBy { it.tags["ref:bukea"]!! }
+    val osmKatasterTreesById = osmKatasterTrees.associateBy { it.katasterId!! }
 
     // sortiere alle nicht-Kataster Bäume in ein Raster aus ~30x30m
     val osmOtherTreesRaster = LatLonRaster(IMPORT_AREA, 0.0005)
@@ -64,7 +64,7 @@ fun main(args: Array<String>) {
 
 
     for (katasterTree in katasterTrees) {
-        val osmTree = osmKatasterTreesById[katasterTree.tags["ref:bukea"]]
+        val osmTree = osmKatasterTreesById[katasterTree.katasterId]
         // Kataster-Baum bereits in OSM-Daten vorhanden
         if (osmTree != null) {
 
@@ -131,9 +131,9 @@ fun main(args: Array<String>) {
     }
 
     // vermutlich gefällt, jedenfalls nicht mehr im Kataster
-    val removedTrees = osmKatasterTreesById.values.filter { osmTree ->
-        osmTree.tags["ref:bukea"] !in katasterTreesById.keys
-    }
+    val removedTrees = osmKatasterTreesById
+        .filterKeys { it !in katasterTreesById.keys }
+        .map { it.value }
 
     println()
 
@@ -164,13 +164,7 @@ fun main(args: Array<String>) {
 }
 
 private fun loadKatasterTrees(file: File): List<OsmNode> {
-    val katasterTrees = parseKataster(BufferedInputStream(FileInputStream(file)))
-    // Erwarte, dass alle Bäume im Kataster eine Nummer haben
-    for (katasterTree in katasterTrees) {
-        val tags = katasterTree.tags
-        check(tags["ref:bukea"] != null || tags["ref:hpa"] != null) { "Nicht alle Bäume im Kataster haben eine ID!" }
-    }
-    return katasterTrees
+    return parseKataster(BufferedInputStream(FileInputStream(file)))
 }
 
 private fun retrieveOsmTreesInArea(areaId: Long): List<OsmNode> {
@@ -191,3 +185,10 @@ private fun OsmNode.checkDateOrLastEditDate(): Instant =
 
 private fun Map<String, String>.hasNoConflictsWith(other: Map<String,String>): Boolean =
     all { (k, v) -> !other.containsKey(k) || other[k] == v }
+
+
+private enum class Operator { BUKEA, HPA }
+
+private val OsmNode.katasterId: Pair<Operator, String>? get() =
+    tags["ref:bukea"]?.let { Pair(Operator.BUKEA, it) } ?:
+    tags["ref:hpa"]?.let { Pair(Operator.HPA, it) }
