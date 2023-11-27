@@ -110,12 +110,18 @@ private fun transformKatasterToOsm(
     })
 
     // wenn species gleicher Wert wie genus, entfernen:
-    // auch wenn explizit geschrieben steht, dass die Art unbekannt ist
+    // und auch wenn explizit geschrieben steht, dass die Art unbekannt ist
     if (osmTags["species"] == osmTags["genus"] || osmTags["species"]?.endsWith(" spec.") == true) {
         osmTags.remove("species")
     }
     if (osmTags["species:de"] == osmTags["genus:de"] || osmTags["species:de"]?.endsWith(" Art unbekannt") == true) {
         osmTags.remove("species:de")
+    }
+
+    // wenn Art "f." (="Form") enthält, stattdessen in "taxon" tun
+    if (osmTags["species"]?.contains("f.") == true) {
+        osmTags["taxon"] = osmTags["species"]!!
+        osmTags.remove("species")
     }
 
     // wenn taxon gleicher Wert wie Species oder genus, entfernen
