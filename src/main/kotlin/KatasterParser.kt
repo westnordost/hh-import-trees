@@ -109,6 +109,8 @@ private fun transformKatasterToOsm(
         }
     })
 
+    osmTags["genus"]?.let { getLeafType(it) }?.let { osmTags["leaf_type"] = it }
+
     // wenn species gleicher Wert wie genus, entfernen:
     // auch wenn explizit geschrieben steht, dass die Art unbekannt ist
     if (osmTags["species"] == osmTags["genus"] || osmTags["species"]?.endsWith(" spec.") == true) {
@@ -150,4 +152,24 @@ private fun transformKatasterToOsm(
         position = LatLon(tags.getValue("lat").toDouble(), tags.getValue("lon").toDouble()),
         tags = osmTags
     )
+}
+
+private fun getLeafType(genus: String): String? = when (genus.lowercase()) {
+    "abies", "calocedrus", "cedrus", "chamaecyparis", "cupressus", "juniperus", "larix", "metasequoia",
+    "picea", "pinus", "pseudotsuga", "sequoia", "sequoiadendron", "taxodium", "taxus", "thuja", "thujopsis",
+    "tsuga" ->
+        "needleleaved"
+
+    "acer", "aesculus", "ailanthus", "alnus", "amelanchier", "betula",
+    "carpinus", "carya", "castanea", "catalpa", "celtis", "cercidiphyllum", "cercis",
+    "cornus", "corylus", "cotoneaster", "crataegus",
+    "davidia", "diospyros", "elaeagnus", "eucommia", "euodia", "euonymus", "fagus", "fraxinus",
+    "ginkgo", "gleditsia", "gymnocladus", "hippophae", "ilex", "juglans", "koelreuteria",
+    "laburnum", "liquidambar", "liriodendron", "magnolia", "malus", "mespilus", "morus",
+    "nothofagus", "nyssa", "ostrya",
+    "parrotia", "paulownia", "phellodendron", "platanus", "populus", "prunus", "pseudocydonia", "pterocarya", "pyrus",
+    "quercus", "rhus", "robinia", "salix", "sambucus", "sophora", "sorbus", "syringa",
+    "tilia", "toona", "ulmus", "zelkova" ->
+        "broadleaved"
+    else -> null
 }
