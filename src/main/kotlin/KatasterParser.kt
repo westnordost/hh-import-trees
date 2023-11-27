@@ -134,14 +134,13 @@ private fun transformKatasterToOsm(
     }
 
     // SEHR implausible Daten entfernen
+
     val trunkCircumference = osmTags["circumference"]?.toDouble()
-    val crownDiameter = osmTags["diameter_crown"]?.toDouble()
-    if (trunkCircumference != null && crownDiameter != null) {
-        val ratio = crownDiameter * PI / trunkCircumference
-        if (ratio < 2 || ratio > 100) {
-            osmTags.remove("circumference")
-            osmTags.remove("diameter_crown")
-        }
+    // ein Stammumfang von <10cm bei Neupflanzung ist zwar nicht unplausibel bei neu gepflanzten Bäumen, allerdings
+    // ändert sich das dann so schnell, dass diese Daten bei Veröffentlichung schon wieder veraltet sind (und normaler-
+    // weise werden als Straßenbäume bereits größere Bäume aus der Baumschule gepflanzt)
+    if (trunkCircumference != null && (trunkCircumference < 0.1 || trunkCircumference > 7.0)) {
+        osmTags.remove("circumference")
     }
 
     return OsmNode(
