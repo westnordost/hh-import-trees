@@ -6,5 +6,5 @@ in OpenStreetMap zu importieren.
 ### Nutzung
 
 ```shell
-java -jar hh-import-trees-0.1.jar <Straßenbaumkataster-Datei im GML-Format>
+java -jar hh-import-trees-0.2.jar <aktuelles Straßenbaumkataster-Datei im GML-Format> (<vorherige Straßenbaumkataster-Datei im GML-Format>)
 ```
