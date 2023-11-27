@@ -124,11 +124,13 @@ private fun transformKatasterToOsm(
     }
     // taxon:cultivar aus taxon extrahieren
     val taxon = osmTags["taxon"]
-    val taxonCultivarRegex = Regex(".*'(.*)'")
+    val taxonCultivarRegex = Regex(".*'(.+)'")
     if (taxon != null) {
         val match = taxonCultivarRegex.matchEntire(taxon)
         if (match != null) {
             osmTags["taxon:cultivar"] = match.groupValues[1]
+                // einige Kultivare sind malformed, z.B. ''New Horizon'' oder 'Autumn Blaze''
+                .replace("'","")
             osmTags.remove("taxon")
         }
     }
