@@ -6,7 +6,7 @@ in OpenStreetMap zu importieren.
 ### Nutzung
 
 ```shell
-java -jar hh-import-trees-0.2.jar \
+java -jar hh-import-trees-0.3.jar \
   <aktuelles Straßenbaumkataster> \
   [<Straßenbaumkataster des letzten Imports> \
    <Timestamp an dem der letzte Import abgeschlossen war>
