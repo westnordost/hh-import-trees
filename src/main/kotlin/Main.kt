@@ -4,6 +4,7 @@ import java.io.FileInputStream
 import java.net.URL
 import java.net.URLEncoder
 import java.time.Instant
+import java.time.format.DateTimeParseException
 
 // Minimale Distanz, die ein Baum aus dem Kataster zu einem Baum der bereits in OSM gemappt ist haben darf, damit der
 // Baum aus dem Kataster ohne Review als neuer Baum hinzugefügt werden kann.
@@ -20,9 +21,10 @@ const val IMPORT_AREA_RELATION = 62782L
 fun main(args: Array<String>) {
     val inputPath = args.getOrNull(0)
     val oldInputPath = args.getOrNull(1)
+    val oldImportDate = args.getOrNull(2)
 
-    if (inputPath == null) {
-        println("Nutzung: hh-import-trees <aktuelles Straßenbaumkataster> [<Straßenbaumkataster des letzten Imports>]")
+    if (inputPath == null || (oldInputPath != null && oldImportDate == null)) {
+        println("Nutzung: hh-import-trees <aktuelles Straßenbaumkataster> [<Straßenbaumkataster des letzten Imports> <Timestamp an dem der letzte Import abgeschlossen war>]")
         return
     }
 
@@ -51,18 +53,24 @@ fun main(args: Array<String>) {
         if (!oldInput.isFile) {
             return println("Straßenbaumkataster-Datei des letzten Imports existiert nicht")
         }
+        try {
+            Instant.parse(oldImportDate!!)
+        } catch (e: DateTimeParseException) {
+            return println("Erwarte Timestamp im Format 2011-12-03T10:15:30Z")
+        }
+
         println("Importiere was sich seit dem letzten Import des Straßenbaumkatasters geändert hat.")
         println()
     }
 
     print("Lade aktuelle Straßenbaumkataster-Datei...")
-    val newKatasterTrees = loadKatasterTrees(input)
+    val newKatasterTrees = loadKatasterTrees(input, null)
     println(" " + newKatasterTrees.size + " Bäume gelesen")
 
     val katasterTrees: List<OsmNode>
     if (oldInput != null) {
         print("Lade Straßenbaumkataster-Datei des letzten Imports...")
-        val oldKatasterTrees = loadKatasterTrees(oldInput)
+        val oldKatasterTrees = loadKatasterTrees(oldInput, oldImportDate)
         println(" " + oldKatasterTrees.size + " Bäume gelesen")
 
         val oldKatasterTreesById = oldKatasterTrees.associateBy { it.katasterId!! }
@@ -221,8 +229,8 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun loadKatasterTrees(file: File): List<OsmNode> {
-    return parseKataster(BufferedInputStream(FileInputStream(file)))
+private fun loadKatasterTrees(file: File, importTimeStamp: String?): List<OsmNode> {
+    return parseKataster(BufferedInputStream(FileInputStream(file)), importTimeStamp)
 }
 
 private fun retrieveOsmTreesInArea(areaId: Long): List<OsmNode> {

@@ -6,14 +6,13 @@ import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.XMLEvent
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-import kotlin.math.PI
 
 private data class KatasterTree(
     val tags: Map<String, String>,
     val isHPA: Boolean
 )
 
-fun parseKataster(inputStream: InputStream): List<OsmNode> {
+fun parseKataster(inputStream: InputStream, importTimeStamp: String?): List<OsmNode> {
     val reader = XMLInputFactory.newDefaultFactory().createXMLStreamReader(inputStream)
     val trees = ArrayList<KatasterTree>()
     var tree: MutableMap<String, String>? = null
@@ -67,9 +66,10 @@ fun parseKataster(inputStream: InputStream): List<OsmNode> {
             }
         }
     }
+    val timeStamp = importTimeStamp ?: publicationTimeStamp
 
     return trees.mapIndexed { index, t ->
-        transformKatasterToOsm(t.tags, -(index + 1L), t.isHPA, publicationTimeStamp!!)
+        transformKatasterToOsm(t.tags, -(index + 1L), t.isHPA, timeStamp!!)
     }
 }
 
@@ -77,7 +77,7 @@ private fun transformKatasterToOsm(
     tags: Map<String, String>,
     id: Long,
     isHPA: Boolean,
-    publicationTimeStamp: String
+    timeStamp: String
 ): OsmNode {
     val osmTags = HashMap<String, String>()
     osmTags["natural"] = "tree"
@@ -154,7 +154,7 @@ private fun transformKatasterToOsm(
     return OsmNode(
         id = id,
         version = 1,
-        timestamp = publicationTimeStamp,
+        timestamp = timeStamp,
         position = LatLon(tags.getValue("lat").toDouble(), tags.getValue("lon").toDouble()),
         tags = osmTags
     )
