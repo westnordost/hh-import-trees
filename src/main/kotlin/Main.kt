@@ -75,6 +75,13 @@ fun main(args: Array<String>) {
 
         val oldKatasterTreesById = oldKatasterTrees.associateBy { it.katasterId!! }
 
+        val removedTreesCount = oldKatasterTreesById.count { it.key !in newKatasterTreesById.keys }
+        val addedTreesCount = newKatasterTreesById.count { it.key !in oldKatasterTreesById.keys }
+        println("$removedTreesCount Bäume wurden entfernt")
+        println("$addedTreesCount Bäume wurden neu gepflanzt")
+        var changedTreeCount = 0
+        var unchangedTreeCount = 0
+
         katasterTrees = newKatasterTrees
             .mapNotNull { katasterTree ->
                 val oldKatasterTree = oldKatasterTreesById[katasterTree.katasterId]
@@ -88,13 +95,18 @@ fun main(args: Array<String>) {
                     // wir nutzen hier das Veröffentlichungsdatum des alten Baumes weil wir ja nur wissen, dass sich
                     // der Baum IRGENDWANN ZWISCHEN Veröffentlichungsdatum des alten und neuen Datensatzes geändert
                     // haben muss
+                    changedTreeCount++
                     katasterTree.copy(timestamp = oldKatasterTree.timestamp)
                 }
                 else {
+                    unchangedTreeCount++
                     null
                 }
             }
-        println("${katasterTrees.size} Bäume sind neu oder haben sich geändert")
+
+        println("$changedTreeCount Bäume haben sich geändert")
+        println("$unchangedTreeCount Bäume bleiben unverändert")
+        println()
     } else {
         katasterTrees = newKatasterTrees
     }
@@ -102,8 +114,6 @@ fun main(args: Array<String>) {
     print("Lade Bäume aus OpenStreetMap via Overpass...")
     val osmTrees = retrieveOsmTreesInArea(IMPORT_AREA_RELATION)
     println(" " + osmTrees.size + " Bäume gelesen")
-
-    println("Verarbeite...")
 
     val katasterTreesById = katasterTrees.associateBy { it.katasterId!! }
 
@@ -124,6 +134,8 @@ fun main(args: Array<String>) {
     // nach wie vor bestehend aber ein Attribut hat sich verändert
     val updatedTrees = ArrayList<OsmNode>()
 
+    var toBeReviewedBecauseChangedInOsmInTheMeantimeCount = 0
+    var toBeReviewedBecauseCloseToOtherTreeCount = 0
 
     for (katasterTree in katasterTrees) {
         val osmTree = osmKatasterTreesById[katasterTree.katasterId]
@@ -146,8 +158,8 @@ fun main(args: Array<String>) {
                 else {
                     // → ansonsten, muss manuell überprüft werden
                     toBeReviewedTrees.add(katasterTree)
+                    toBeReviewedBecauseChangedInOsmInTheMeantimeCount++
                 }
-
             }
         }
         // Kataster-Baum noch nicht in OSM-Daten vorhanden
@@ -167,6 +179,7 @@ fun main(args: Array<String>) {
             else if (nearOtherOsmTrees.size > 1) {
                 // → Baum muss manuell reviewt werden
                 toBeReviewedTrees.add(katasterTree)
+                toBeReviewedBecauseCloseToOtherTreeCount++
             }
             // in OSM genau ein Baum im Umfeld vorhanden
             else {
@@ -191,6 +204,7 @@ fun main(args: Array<String>) {
                 else {
                     // → Baum muss manuell reviewt werden
                     toBeReviewedTrees.add(katasterTree)
+                    toBeReviewedBecauseCloseToOtherTreeCount++
                 }
             }
         }
@@ -220,8 +234,8 @@ fun main(args: Array<String>) {
         println("""
             Schreibe ${outputToBeReviewed}...
             --------------------
-            ${toBeReviewedTrees.size} Straßenbäume kommen hinzu, aber deren Mittelpunkte sind jeweils 
-            zwischen $TREE_MERGE_DISTANCE und $SAFE_TREE_DISTANCE Metern von einem bereits gemappten Baum entfernt.
+            $toBeReviewedBecauseChangedInOsmInTheMeantimeCount Straßenbäume wurden zwischenzeitlich in OSM editiert und
+            $toBeReviewedBecauseCloseToOtherTreeCount neue Straßenbäume sind jeweils zwischen $TREE_MERGE_DISTANCE und $SAFE_TREE_DISTANCE Metern von einem bereits gemappten Baum entfernt.
             ACHTUNG: Diese sollten manuell reviewt werden.
             
         """.trimIndent())
