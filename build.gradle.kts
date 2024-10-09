@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.westnordost"
-version = "0.2"
+version = "0.3"
 
 repositories {
     mavenCentral()
