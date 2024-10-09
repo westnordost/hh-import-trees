@@ -65,7 +65,9 @@ fun main(args: Array<String>) {
 
     print("Lade aktuelle Straßenbaumkataster-Datei...")
     val newKatasterTrees = loadKatasterTrees(input, null)
+    val newKatasterTreesById = newKatasterTrees.associateBy { it.katasterId!! }
     println(" " + newKatasterTrees.size + " Bäume gelesen")
+    println()
 
     val katasterTrees: List<OsmNode>
     if (oldInput != null) {
@@ -212,7 +214,9 @@ fun main(args: Array<String>) {
 
     // vermutlich gefällt, jedenfalls nicht mehr im Kataster
     val removedTrees = osmKatasterTreesById
-        .filterKeys { it !in katasterTreesById.keys }
+        // gegen Bäume in aktueller Kataster-Datei checken, nicht katasterTreesById weil dies bei
+        // jedem außer dem ersten Import ja nur die Änderungen enthält!
+        .filterKeys { it !in newKatasterTreesById.keys }
         .map { it.value }
 
     println()
