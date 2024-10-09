@@ -148,11 +148,16 @@ fun main(args: Array<String>) {
             // die baumids (refs) der Kataster-Bäume sind nämlich stabil
             val somethingChanged = katasterTree.tags.any { (k,v) -> osmTree.tags[k] != v }
             if (somethingChanged) {
+                // für diese Felder immer der autorativen Quelle vertrauen
+                val conflictingChanges = osmTree.tags
+                    .filter { (k,v) -> katasterTree.tags.containsKey(k) && katasterTree.tags[k] != v }
+                    .filterKeys { it !in listOf("circumference", "diameter_crown") }
+
                 // nur übernehmen, wenn Datum aus Baumkataster neuer als zuletzt von Mappern bearbeitet
                 val osmCheckDate = osmTree.checkDateOrLastEditDate()
                 val katasterCheckDate = katasterTree.checkDateOrLastEditDate()
 
-                if (osmCheckDate.isBefore(katasterCheckDate)) {
+                if (osmCheckDate.isBefore(katasterCheckDate) || conflictingChanges.isEmpty()) {
                     // → kann ohne Review aktualisiert werden
                     osmTree.tags.putAll(katasterTree.tags)
                     updatedTrees.add(osmTree)
