@@ -218,11 +218,27 @@ fun main(args: Array<String>) {
     }
 
     // vermutlich gefällt, jedenfalls nicht mehr im Kataster
-    val removedTrees = osmKatasterTreesById
+    val removedTrees = ArrayList<OsmNode>()
+
+    removedTrees.addAll(osmKatasterTreesById
         // gegen Bäume in aktueller Kataster-Datei checken, nicht katasterTreesById weil dies bei
         // jedem außer dem ersten Import ja nur die Änderungen enthält!
         .filterKeys { it !in newKatasterTreesById.keys }
         .map { it.value }
+    )
+
+    // Duplikate entfernen
+    val osmKatasterTreesSet = HashSet<Pair<Operator, String>>()
+    var removedDuplicatesCount = 0
+    for (osmKatasterTree in osmKatasterTrees) {
+        val katasterId = osmKatasterTree.katasterId
+        if (katasterId in osmKatasterTreesSet) {
+            removedTrees.add(osmKatasterTree)
+            removedDuplicatesCount++
+        } else if (katasterId != null){
+            osmKatasterTreesSet.add(katasterId)
+        }
+    }
 
     println()
 
@@ -232,7 +248,7 @@ fun main(args: Array<String>) {
             --------------------
             ${addedTrees.size} Straßenbäume kommen neu hinzu
             ${updatedTrees.size} Straßenbäume wurden aktualisiert
-            ${removedTrees.size} Straßenbäume wurden entfernt
+            ${removedTrees.size} Straßenbäume wurden entfernt (davon sind $removedDuplicatesCount Duplikate)
             
             """.trimIndent()
         )
