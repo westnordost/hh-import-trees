@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.8.21"
+    kotlin("jvm") version "2.4.21"
     application
 }
 
@@ -11,12 +11,12 @@ repositories {
 }
 
 dependencies {
-    implementation("org.locationtech.proj4j:proj4j:1.3.0")
-    implementation("org.locationtech.proj4j:proj4j-epsg:1.3.0")
+    implementation("org.locationtech.proj4j:proj4j:1.4.3")
+    implementation("org.locationtech.proj4j:proj4j-epsg:1.4.3")
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(25)
 }
 
 application {
