@@ -7,19 +7,13 @@ import javax.xml.stream.events.XMLEvent
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-private data class KatasterTree(
-    val tags: Map<String, String>,
-    val isHPA: Boolean
-)
-
 fun parseKataster(inputStream: InputStream, importTimeStamp: String?): List<OsmNode> {
     val reader = XMLInputFactory.newDefaultFactory().createXMLStreamReader(inputStream)
-    val trees = ArrayList<KatasterTree>()
+    val trees = ArrayList<Map<String, String>>()
     var tree: MutableMap<String, String>? = null
     val elements = ArrayList<String>()
     val crsFactory = CRSFactory()
     var publicationTimeStamp: String? = null
-    var isHPA = false
     val transform = CoordinateTransformFactory().createTransform(
         crsFactory.createFromName("epsg:25832"),
         crsFactory.createFromName("epsg:4326")
@@ -29,8 +23,6 @@ fun parseKataster(inputStream: InputStream, importTimeStamp: String?): List<OsmN
             XMLEvent.START_ELEMENT -> {
                 val name = reader.name.localPart
                 when (name) {
-                    "strassenbaumkataster" -> isHPA = false
-                    "strassenbaumkataster_hpa" -> isHPA = true
                     "FeatureCollection" -> publicationTimeStamp = reader.attributes["timeStamp"]!!
                     "featureMember" -> tree = HashMap()
                     // check if points are in expected coordinate system
@@ -41,7 +33,7 @@ fun parseKataster(inputStream: InputStream, importTimeStamp: String?): List<OsmN
             XMLEvent.END_ELEMENT -> {
                 val name = reader.name.localPart
                 if (name == "featureMember") {
-                    trees.add(KatasterTree(tree!!, isHPA))
+                    trees.add(tree!!)
                     tree = null
                 }
                 elements.removeLast()
@@ -68,22 +60,21 @@ fun parseKataster(inputStream: InputStream, importTimeStamp: String?): List<OsmN
     }
     val timeStamp = importTimeStamp ?: publicationTimeStamp
 
-    return trees.mapIndexed { index, t ->
-        transformKatasterToOsm(t.tags, -(index + 1L), t.isHPA, timeStamp!!)
+    return trees.mapIndexed { index, tags ->
+        transformKatasterToOsm(tags, -(index + 1L), timeStamp!!)
     }
 }
 
 private fun transformKatasterToOsm(
     tags: Map<String, String>,
     id: Long,
-    isHPA: Boolean,
     timeStamp: String
 ): OsmNode {
     val osmTags = HashMap<String, String>()
     osmTags["natural"] = "tree"
     osmTags.putAll(tags.mapNotNull { (k, v) ->
         when (k) {
-            "baumid" -> (if (isHPA) "ref:hpa" else "ref:bukea") to v
+            "baumid" -> "ref:bukea" to v
             "pflanzjahr" -> {
                 // einige Bäume im Quelldatensatz haben Pflanzjahr = 0
                 val year = v.toIntOrNull()?.takeIf { it != 0 }

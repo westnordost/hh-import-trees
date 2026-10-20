@@ -228,7 +228,7 @@ fun main(args: Array<String>) {
     )
 
     // Duplikate entfernen
-    val osmKatasterTreesSet = HashSet<Pair<Operator, String>>()
+    val osmKatasterTreesSet = HashSet<String>()
     var removedDuplicatesCount = 0
     for (osmKatasterTree in osmKatasterTrees) {
         val katasterId = osmKatasterTree.katasterId
@@ -291,9 +291,5 @@ private fun OsmNode.checkDateOrLastEditDate(): Instant =
 private fun Map<String, String>.hasNoConflictsWith(other: Map<String,String>): Boolean =
     all { (k, v) -> !other.containsKey(k) || other[k] == v }
 
-
-private enum class Operator { BUKEA, HPA }
-
-private val OsmNode.katasterId: Pair<Operator, String>? get() =
-    tags["ref:bukea"]?.let { Pair(Operator.BUKEA, it) } ?:
-    tags["ref:hpa"]?.let { Pair(Operator.HPA, it) }
+private val OsmNode.katasterId: String? get() =
+    tags["ref:bukea"]
